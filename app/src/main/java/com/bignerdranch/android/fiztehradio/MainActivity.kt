@@ -11,7 +11,7 @@ import android.R.attr.fragment
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var router  : Router
+    lateinit var router  : Router // Вспомогательный класс для переключения между фрагментами.
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,7 +21,7 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null) router.navigateTo(false, ::MainFragment)
     }
 
-    override fun onBackPressed() {
+    override fun onBackPressed() { // Если не можем вернуться к фрагменту, закрываем активити. см класс Router
         if (!router.navigateBack()) {
             super.onBackPressed()
         }
