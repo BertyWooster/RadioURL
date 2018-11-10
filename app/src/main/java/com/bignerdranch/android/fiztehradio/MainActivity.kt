@@ -18,7 +18,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         router = Router(this, R.id.fragment_container)
-        if (savedInstanceState == null) router.navigateTo(false, ::MainFragment)
+        if (savedInstanceState == null) router.navigateTo(false, ::MainFragment)// переключаемся на MainFragment
     }
 
     override fun onBackPressed() { // Если не можем вернуться к фрагменту, закрываем активити. см класс Router

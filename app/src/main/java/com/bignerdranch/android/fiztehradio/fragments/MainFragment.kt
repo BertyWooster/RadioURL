@@ -58,7 +58,7 @@ class MainFragment : Fragment() {
     }
 
 
-    fun play(state : Boolean){ // Запускает илиостанавливает плеер в зависимости от mState
+    fun play(state : Boolean){ // Запускает или останавливает плеер в зависимости от mState
     if(mState){
         mPlayButton.text = getString(R.string.stop)
     }else{

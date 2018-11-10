@@ -4,7 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 
-
+// Не уверен, что есть необходимость в таймере.
 class SplashScreenActivity : AppCompatActivity() {
 
     override fun onBackPressed() {
