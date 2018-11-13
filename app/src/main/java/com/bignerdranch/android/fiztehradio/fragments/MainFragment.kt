@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageButton
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -18,7 +19,7 @@ import java.lang.IllegalStateException
 class MainFragment : Fragment() {
 
     private lateinit var router : Router //  property router нужно для перехода отсюда к следующим фрагментам.
-    private lateinit var mPlayButton : Button
+    private lateinit var mPlayButton : ImageButton
     private var mState: Boolean = false // состояние плеера ( играет или нет )
     private val SAVED_STATE: String = "saved_state"
 
@@ -39,7 +40,14 @@ class MainFragment : Fragment() {
         play(mState)
 
         mPlayButton.setOnClickListener {
-            mState = !mState
+            if (mState == false) {
+                mState = true
+                mPlayButton.setImageResource(android.R.drawable.ic_media_pause)
+            }
+            else {
+                mState = false
+                mPlayButton.setImageResource(android.R.drawable.ic_media_play)
+            }
             play(mState)
         }
 
@@ -60,9 +68,9 @@ class MainFragment : Fragment() {
 
     fun play(state : Boolean){ // Запускает или останавливает плеер в зависимости от mState
     if(mState){
-        mPlayButton.text = getString(R.string.stop)
+        //mPlayButton.text = getString(R.string.stop)
     }else{
-        mPlayButton.text = getString(R.string.play)
+        //mPlayButton.text = getString(R.string.play)
     }
 }
 
