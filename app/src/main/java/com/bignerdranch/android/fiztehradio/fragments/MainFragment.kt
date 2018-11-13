@@ -20,6 +20,7 @@ class MainFragment : Fragment() {
 
     private lateinit var router : Router //  property router нужно для перехода отсюда к следующим фрагментам.
     private lateinit var mPlayButton : ImageButton
+    private lateinit var mHostButton: Button
     private var mState: Boolean = false // состояние плеера ( играет или нет )
     private val SAVED_STATE: String = "saved_state"
 
@@ -54,6 +55,12 @@ class MainFragment : Fragment() {
         mPlayButton.setOnLongClickListener {
             router.navigateTo (fragmentFactory = ::TestFragment)// Пример того как можно заменить фрагмент, подробнее тут https://cloud.mail.ru/public/KWkJ/3C1iZD5vy
             true
+        }
+
+        mHostButton = layout.findViewById(R.id.host_button)
+        mHostButton.setOnClickListener{
+            router.navigateTo (fragmentFactory = ::HostListFragment)
+
         }
 
 

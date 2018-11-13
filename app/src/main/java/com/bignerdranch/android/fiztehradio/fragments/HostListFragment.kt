@@ -7,25 +7,18 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import com.bignerdranch.android.fiztehradio.R
 
-
-
-
-class TestFragment : Fragment() {
-
-
-// Просто набор палок, чтобы оторазить. (Прут)
+/**
+ * Created by alekseimalyshev on 13/11/2018.
+ */
+class HostListFragment: Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        val layout = inflater.inflate(R.layout.fragment_example, container, false)
+        val layout = inflater.inflate(R.layout.fragment_host_list, container, false)
+
         return layout
     }
-
-
-
-
-
 }
