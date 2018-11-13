@@ -4,13 +4,30 @@
     android:layout_width="match_parent"
     android:background="@color/colorPrimary"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     >
-
-    <Button
-        android:id="@+id/play_button"
+    <TextView
         android:layout_width="match_parent"
-        android:background="@color/colorAccent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center" />
+        android:layout_height="0dp"
+        android:gravity="center"
+        android:text="@string/title"
+        android:textColor="@color/colorAccent"
+        android:textAppearance="@android:style/TextAppearance.DeviceDefault.Large"
+        android:layout_weight="4"/>
+
+    <ImageButton
+        android:id="@+id/play_button"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:layout_gravity="center"
+        android:layout_weight="1"
+        android:src="@android:drawable/ic_media_play" />
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="4">
+
+    </View>
 
 </LinearLayout>
