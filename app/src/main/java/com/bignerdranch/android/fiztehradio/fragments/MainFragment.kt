@@ -19,9 +19,10 @@ import java.lang.IllegalStateException
 class MainFragment : Fragment() {
 
     private lateinit var router : Router //  property router нужно для перехода отсюда к следующим фрагментам.
+
     private lateinit var mPlayButton : ImageButton
-    private lateinit var mHostButton: Button
     private var mState: Boolean = false // состояние плеера ( играет или нет )
+
     private val SAVED_STATE: String = "saved_state"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,18 +53,6 @@ class MainFragment : Fragment() {
             play(mState)
         }
 
-        mPlayButton.setOnLongClickListener {
-            router.navigateTo (fragmentFactory = ::TestFragment)// Пример того как можно заменить фрагмент, подробнее тут https://cloud.mail.ru/public/KWkJ/3C1iZD5vy
-            true
-        }
-
-        mHostButton = layout.findViewById(R.id.host_button)
-        mHostButton.setOnClickListener{
-            router.navigateTo (fragmentFactory = ::HostListFragment)
-
-        }
-
-
         return layout
     }
 
@@ -74,13 +63,11 @@ class MainFragment : Fragment() {
 
 
     fun play(state : Boolean){ // Запускает или останавливает плеер в зависимости от mState
-    if(mState){
-        //mPlayButton.text = getString(R.string.stop)
-    }else{
-        //mPlayButton.text = getString(R.string.play)
+        if (mState) {
+
+        }
+        else {
+
+        }
     }
-}
-
-
-
 }

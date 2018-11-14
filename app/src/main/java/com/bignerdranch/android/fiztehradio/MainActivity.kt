@@ -7,6 +7,7 @@ import androidx.fragment.app.FragmentManager
 import com.bignerdranch.android.fiztehradio.fragments.MainFragment
 import android.R.attr.fragment
 import android.view.View
+import com.bignerdranch.android.fiztehradio.fragments.HostListFragment
 import com.mikepenz.materialdrawer.DrawerBuilder
 import com.mikepenz.materialdrawer.model.interfaces.IDrawerItem
 import com.mikepenz.materialdrawer.Drawer
@@ -17,13 +18,6 @@ import com.mikepenz.materialdrawer.model.interfaces.IProfile
 import com.mikepenz.materialdrawer.AccountHeader
 import com.mikepenz.materialdrawer.model.ProfileDrawerItem
 import com.mikepenz.materialdrawer.AccountHeaderBuilder
-
-
-
-
-
-
-
 
 
 class MainActivity : AppCompatActivity() {
@@ -45,7 +39,7 @@ class MainActivity : AppCompatActivity() {
         DrawerBuilder().withActivity(this).build()
 
         val item1 = PrimaryDrawerItem().withIdentifier(1).withName(R.string.drawer_item_home).withBadge("19")
-        val item2 = SecondaryDrawerItem().withIdentifier(2).withName(R.string.drawer_item_settings)
+        val item2 = SecondaryDrawerItem().withIdentifier(2).withName(R.string.hosts)
 
         // Account header
         val headerResult = AccountHeaderBuilder()
@@ -72,6 +66,7 @@ class MainActivity : AppCompatActivity() {
                 .withOnDrawerItemClickListener(object : Drawer.OnDrawerItemClickListener {
                     override fun onItemClick(view: View, position: Int, drawerItem: IDrawerItem<*, *>): Boolean {
                         // do something with the clicked item :D
+                        router.navigateTo(true, ::HostListFragment)
                         return false
                     }
                 })

@@ -3,7 +3,7 @@
     <string name="title">Физтех.Радио</string>
     <string name="play">START!</string>
     <string name="stop">STOP!</string>
-    <string name="example_string">It is changed fragment!</string>
+    <string name="example_string">Ведущий по умолчанию</string>
     <string name="hosts">Ведущие</string>
     <string name="drawer_item_home">Радио</string>
     <string name="drawer_item_settings">Настройки</string>
