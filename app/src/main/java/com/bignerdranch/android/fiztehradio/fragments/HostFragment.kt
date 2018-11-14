@@ -10,7 +10,7 @@ import com.bignerdranch.android.fiztehradio.R
 
 
 
-class TestFragment : Fragment() {
+class HostFragment : Fragment() {
 
 
 // Просто набор палок, чтобы оторазить. (Прут)
@@ -20,7 +20,7 @@ class TestFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        val layout = inflater.inflate(R.layout.fragment_example, container, false)
+        val layout = inflater.inflate(R.layout.fragment_host, container, false)
         return layout
     }
 
