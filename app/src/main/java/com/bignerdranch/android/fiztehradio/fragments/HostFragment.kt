@@ -4,15 +4,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import androidx.fragment.app.Fragment
 import com.bignerdranch.android.fiztehradio.R
-import com.bignerdranch.android.fiztehradio.Router
 
 
 
 
-class TestFragment : Fragment() {
+class HostFragment : Fragment() {
 
 
 // Просто набор палок, чтобы оторазить. (Прут)
@@ -22,7 +20,7 @@ class TestFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        val layout = inflater.inflate(R.layout.fragment_example, container, false)
+        val layout = inflater.inflate(R.layout.fragment_host, container, false)
         return layout
     }
 
