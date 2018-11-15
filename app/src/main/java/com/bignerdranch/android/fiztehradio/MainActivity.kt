@@ -66,7 +66,15 @@ class MainActivity : AppCompatActivity() {
                 .withOnDrawerItemClickListener(object : Drawer.OnDrawerItemClickListener {
                     override fun onItemClick(view: View, position: Int, drawerItem: IDrawerItem<*, *>): Boolean {
                         // do something with the clicked item :D
-                        router.navigateTo(true, ::HostListFragment)
+                        if (position == 1) {
+                            // Выбрал пункт "Радио"
+                            router.navigateTo(false, ::MainFragment)
+                        } else if (position == 3) {
+                            // Выбран пункт "Ведущие"
+                            // Из-за разделителя для него vposition == 3
+                            router.navigateTo(true, ::HostListFragment)
+                        }
+
                         return false
                     }
                 })
