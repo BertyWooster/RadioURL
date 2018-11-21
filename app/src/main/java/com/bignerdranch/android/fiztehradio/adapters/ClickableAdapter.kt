@@ -42,8 +42,8 @@ class ClickableAdapter(activity: FragmentActivity) : RecyclerView.Adapter<Clicka
     }
 
     fun onItemClick(view: View, position: Int) {
-
-        router.navigateTo(fragmentFactory = ::HostFragment)
+        router.clearStackUntillLevel(2)//Так я убеждаюсь что в стеке только два фрагмета, MainFragment и HostListFragment
+        router.navigateTo(true, fragmentFactory = ::HostFragment)
         Toast.makeText(view.context, arrayOfItems[position], Toast.LENGTH_SHORT).show()
     }
 

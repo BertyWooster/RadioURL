@@ -45,6 +45,6 @@ class HostListFragment: Fragment() {
 //        )
 
         recycler.layoutManager = layoutManager
-        recycler.adapter = ClickableAdapter(activity)
+        recycler.adapter = ClickableAdapter(requireActivity())
     }
 }

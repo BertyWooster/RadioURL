@@ -38,4 +38,33 @@ class Router(activity : FragmentActivity, container: Int) {
 
         return false
     }
+
+
+
+    // функция возвращает длину стека фрагментов
+    fun getLenghtOfStack():Int{
+        val activity = weakActivity.get()
+
+        activity?.run {
+            return supportFragmentManager.backStackEntryCount
+        }
+    return 0
+    }
+
+// Эта функция незаметно удаляет все фрагменты из стека до фрагмента уровня level: (level 1 соответствует Mainfragment, 2 - cледующий в стеке и тд)
+    fun clearStackUntillLevel(level:Int):Boolean{
+        val activity = weakActivity.get()
+
+        activity?.run {
+            var count =  supportFragmentManager.backStackEntryCount
+            while (level < count){
+                supportFragmentManager.popBackStackImmediate()
+                count--
+            }
+
+        }
+        return true
+
+    }
+
 }

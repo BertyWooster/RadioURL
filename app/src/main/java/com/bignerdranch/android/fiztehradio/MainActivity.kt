@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         router = Router(this, R.id.fragment_container)
-        if (savedInstanceState == null) router.navigateTo(false, ::MainFragment)// переключаемся на MainFragment
+        if (savedInstanceState == null) router.navigateTo(true, ::MainFragment)// переключаемся на MainFragment
 
         val navDrawer = initDrawerItems()
     }
@@ -68,10 +68,12 @@ class MainActivity : AppCompatActivity() {
                         // do something with the clicked item :D
                         if (position == 1) {
                             // Выбрал пункт "Радио"
+                            router.clearStackUntillLevel(1)//Так я убеждаюсь, что в стеке только MainFragment(Находимся на первом "уровне")
                             router.navigateTo(false, ::MainFragment)
                         } else if (position == 3) {
                             // Выбран пункт "Ведущие"
                             // Из-за разделителя для него vposition == 3
+                            router.clearStackUntillLevel(1)//Так я убеждаюсь, что в стеке только MainFragment
                             router.navigateTo(true, ::HostListFragment)
                         }
 
@@ -83,6 +85,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() { // Если не можем вернуться к фрагменту, закрываем активити. см класс Router
+        if(router.getLenghtOfStack() == 1){
+            android.os.Process.killProcess(android.os.Process.myPid());
+            //Закрываем программу если в стеке только MainFragment и нажата клавиша Back!
+            //Этот момент, возможно, требует аккуратной доработки.
+            //Можно и так : super.onBackPressed(), но на секунду появиться белый экранчик при выходе. (Но это сейчас не суть проблемы)
+        }
+
         if (!router.navigateBack()) {
             super.onBackPressed()
         }
