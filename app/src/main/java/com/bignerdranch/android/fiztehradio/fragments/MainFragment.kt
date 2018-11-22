@@ -14,6 +14,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bignerdranch.android.fiztehradio.R
 import java.lang.IllegalStateException
+import com.bignerdranch.android.fiztehradio.serveces.BackgroundSoundService
+
+
 
 
 class MainFragment : Fragment() {
@@ -45,10 +48,15 @@ class MainFragment : Fragment() {
             if (mState == false) {
                 mState = true
                 mPlayButton.setImageResource(android.R.drawable.ic_media_pause)
+                activity?.startService(Intent(activity, BackgroundSoundService::class.java))
+                //Запускаю сервис для проигрывания музыки.
+
             }
             else {
                 mState = false
                 mPlayButton.setImageResource(android.R.drawable.ic_media_play)
+                activity?.stopService(Intent(activity, BackgroundSoundService::class.java))
+                //Останавливаю сервис
             }
             play(mState)
         }
