@@ -1,20 +1,27 @@
 package com.bignerdranch.android.fiztehradio.serveces
 
-import android.content.Intent
-import android.os.IBinder
+import android.annotation.TargetApi
 import android.app.*
+import android.content.Context
+import android.content.Intent
+import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
-import androidx.core.app.NotificationCompat
-import android.widget.Toast
-import android.media.AudioAttributes
 import android.os.Build
+import android.os.IBinder
+import android.widget.Toast
+import androidx.core.app.NotificationCompat
+import com.bignerdranch.android.fiztehradio.MainActivity
 import com.bignerdranch.android.fiztehradio.R
 
 
 class BackgroundSoundService : Service() {
     lateinit var player: MediaPlayer
+    var mIntention: String = "toStart" // Начальное намерение для MediaPlayer при запуске Service.
     val mUrl: String = "http://sc2b-sjc.1.fm:8030/"
+    var isPlaing: Boolean = false
 
 
     override fun onBind(intent: Intent): IBinder? {
@@ -23,61 +30,116 @@ class BackgroundSoundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Toast.makeText(this, " Connecting...  ", Toast.LENGTH_SHORT).show()
+        val notification = createActionNotification(this)//Чтобы сервис жил в background нам нужна notification
+        startForeground(1000, notification) // запускаемся в фоновом режиме.
 
-        val notification = createNotification()
-        startForeground(1337, notification)
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        if(intent.extras != null){
+            mIntention = intent.getStringExtra("intention") // Этот интент приходит из notification при нажатии.
+        }
 
-        val r = object : Runnable {
-            override fun run() {
-                preparePlayer()
-                player.start();
+
+        if(isPlaing){
+
+            if(mIntention == "toStart"){
+                // игнорируем
+            }
+            if(mIntention == "toStop"){
+                stop()
+            }
+            if (mIntention == "toBreak"){
+                stopSelf()
+            }
+        }
+        else{
+            if(mIntention == "toStart"){
+                start()
+            }
+            if(mIntention == "toStop"){
+                //игнорируем
+            }
+            if (mIntention == "toBreak"){
+                stopSelf()
             }
         }
 
-        val t = Thread(r)
-        t.start()
+
         return Service.START_STICKY
     }
 
     override fun onDestroy() {
         player.release()
-        Toast.makeText(this, " Disconnecting... ", Toast.LENGTH_SHORT).show()
     }
 
-    fun createNotification():Notification{
-        var notification:Notification
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Create the NotificationChannel
-            val name = getString(R.string.channel_name)
-            val descriptionText = getString(R.string.channel_description)
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val mChannel = NotificationChannel("channelID", name, importance)
-            mChannel.description = descriptionText
-            // Register the channel with the system; you can't change the importance
-            // or other notification behaviors after this
-            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(mChannel)
 
-             notification = NotificationCompat.Builder(this, "channelID")
-                    .setSmallIcon(R.drawable.notification_icon_background)
-                    .setContentTitle("RADIO ON")
-                    .setContentText("plaing")
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT).build()
-        }else{
+    @TargetApi(Build.VERSION_CODES.KITKAT_WATCH)
+    internal fun createActionNotification(context: Context):Notification {
 
-             notification = NotificationCompat.Builder(this)
-                    .setContentTitle("RADIO ON")
-                    .setContentText("plaing").build()
 
-        }
+        //Создание интента для запуска плеера!
+        val startPlayerIntent = Intent(context, BackgroundSoundService::class.java)
+        startPlayerIntent.putExtra("intention", "toStart")
+        val piStart = PendingIntent.getService(context, 1, startPlayerIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+        //Создание интента для остановки плеера!
+        val stopPlayerIntent = Intent(context, BackgroundSoundService::class.java)
+        stopPlayerIntent.putExtra("intention", "toStop")
+        val piStop = PendingIntent.getService(context, 2, stopPlayerIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+
+        //Создание интента для остановки сервиса!
+        val stopServiceIntent = Intent(context, BackgroundSoundService::class.java)
+        stopServiceIntent.putExtra("intention", "toBreak")
+        val piStopService = PendingIntent.getService(context, 3, stopServiceIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+        //Создание интента для перехода в MainActivity по нажатию на notification.
+        val notificationIntentMainAct = Intent(context, MainActivity::class.java)
+        notificationIntentMainAct.putExtra("notification", true)
+        val piMainAct = PendingIntent.getActivity(context, 4, notificationIntentMainAct, PendingIntent.FLAG_UPDATE_CURRENT)
+
+
+        val builder = NotificationCompat.Builder(context, getChannelId("my_channel_id", "My default Channel", "my_group_id", "My default Group"))
+                .setContentIntent(piMainAct)
+                .setSmallIcon(R.drawable.player)
+                .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.player))
+                .addAction(NotificationCompat.Action.Builder(R.drawable.navigation_empty_icon, "play", piStart).build())
+                .addAction(NotificationCompat.Action.Builder(R.drawable.navigation_empty_icon, "pause", piStop).build())// #0)
+                .addAction(NotificationCompat.Action.Builder(R.drawable.navigation_empty_icon, "stop", piStopService).build())// #0)
+                .setAutoCancel(false)
+                .setContentTitle("Player")
+                .setContentText("chosen url")
+                .setColor(245)
+
+
+        val notification = builder.build()
         return notification
     }
 
+    fun start(){
+        Toast.makeText(this, " Connecting... ", Toast.LENGTH_SHORT).show()
+        val r = object : Runnable {
+            override fun run() {
+                preparePlayer()
+                player.start();
+                isPlaing = true
+            }
+        }
+
+        val t = Thread(r)
+        t.start()
+    }
+
+    fun stop(){
+        player.release()
+        Toast.makeText(this, " Disconnecting... ", Toast.LENGTH_SHORT).show()
+        isPlaing = false
+    }
+
+
+    // Подготовка плеера к проигрыванию.
     fun preparePlayer(){
         player = MediaPlayer()
         player.setDataSource(mUrl)
@@ -85,7 +147,7 @@ class BackgroundSoundService : Service() {
         player.setVolume(100f, 100f)
 
         if (Build.VERSION.SDK_INT >= 21) {
-          val audioAttributes = AudioAttributes.Builder()
+            val audioAttributes = AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA).
                             setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
             player.setAudioAttributes(audioAttributes)
@@ -98,6 +160,59 @@ class BackgroundSoundService : Service() {
         }
     }
 
+
+    private fun getChannelId(channelId: String, name: String, groupId: String, groupName: String) : String {
+        return when (Build.VERSION.SDK_INT) {
+            Build.VERSION_CODES.O -> getChannelIdInternal(channelId, name, groupId, groupName)
+            else ->  ""
+        }
+    }
+
+
+    @TargetApi(Build.VERSION_CODES.O)
+    private fun getChannelIdInternal(channelId: String, name: String, groupId: String, groupName: String): String {
+
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channels = nm.notificationChannels
+        for (channel in channels) {
+            if (channel.id == channelId) {
+                return channel.id
+            }
+        }
+
+        val group = getNotificationChannelGroupId(groupId, groupName)
+        val importance = NotificationManager.IMPORTANCE_HIGH
+        val notificationChannel = NotificationChannel(channelId, name, importance)
+        notificationChannel.enableLights(true)
+        notificationChannel.lightColor = Color.RED
+        notificationChannel.enableVibration(true)
+
+        notificationChannel.group = group // set custom group
+        nm.createNotificationChannel(notificationChannel)
+
+        return channelId
+    }
+
+
+    private fun getNotificationChannelGroupId(groupId: String, name: String): String {
+        return when (Build.VERSION.SDK_INT) {
+            Build.VERSION_CODES.O -> getNotificationChannelGroupIdInternal(groupId, name)
+            else ->  ""
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.O)
+    private fun getNotificationChannelGroupIdInternal(groupId: String, name: String): String {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val groups = nm.notificationChannelGroups
+        for (group in groups) {
+            if (group.id == groupId) {
+                return group.id
+            }
+        }
+        nm.createNotificationChannelGroup(NotificationChannelGroup(groupId, name))
+        return groupId
+    }
 
 
 }

@@ -2,22 +2,18 @@ package com.bignerdranch.android.fiztehradio
 
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
-import androidx.fragment.app.FragmentManager
-import com.bignerdranch.android.fiztehradio.fragments.MainFragment
-import android.R.attr.fragment
 import android.view.View
+import androidx.appcompat.app.AppCompatActivity
 import com.bignerdranch.android.fiztehradio.fragments.HostListFragment
-import com.mikepenz.materialdrawer.DrawerBuilder
-import com.mikepenz.materialdrawer.model.interfaces.IDrawerItem
+import com.bignerdranch.android.fiztehradio.fragments.MainFragment
+import com.mikepenz.materialdrawer.AccountHeaderBuilder
 import com.mikepenz.materialdrawer.Drawer
-import com.mikepenz.materialdrawer.model.SecondaryDrawerItem
+import com.mikepenz.materialdrawer.DrawerBuilder
 import com.mikepenz.materialdrawer.model.DividerDrawerItem
 import com.mikepenz.materialdrawer.model.PrimaryDrawerItem
-import com.mikepenz.materialdrawer.model.interfaces.IProfile
-import com.mikepenz.materialdrawer.AccountHeader
 import com.mikepenz.materialdrawer.model.ProfileDrawerItem
-import com.mikepenz.materialdrawer.AccountHeaderBuilder
+import com.mikepenz.materialdrawer.model.SecondaryDrawerItem
+import com.mikepenz.materialdrawer.model.interfaces.IDrawerItem
 
 
 class MainActivity : AppCompatActivity() {
@@ -27,6 +23,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
 
         router = Router(this, R.id.fragment_container)
         if (savedInstanceState == null) router.navigateTo(true, ::MainFragment)// переключаемся на MainFragment
@@ -86,10 +83,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onBackPressed() { // Если не можем вернуться к фрагменту, закрываем активити. см класс Router
         if(router.getLenghtOfStack() == 1){
-            android.os.Process.killProcess(android.os.Process.myPid());
             //Закрываем программу если в стеке только MainFragment и нажата клавиша Back!
             //Этот момент, возможно, требует аккуратной доработки.
-            //Можно и так : super.onBackPressed(), но на секунду появиться белый экранчик при выходе. (Но это сейчас не суть проблемы)
+             super.onBackPressed()
         }
 
         if (!router.navigateBack()) {

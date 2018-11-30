@@ -40,4 +40,5 @@ dependencies {
     //required support lib modules
     implementation "androidx.annotation:annotation:1.0.0"
     implementation "com.google.android.material:material:1.0.0"
+
 }
