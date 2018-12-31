@@ -22,6 +22,7 @@ class BackgroundSoundService : Service() {
     var mIntention: String = "toStart" // Начальное намерение для MediaPlayer при запуске Service.
     val mUrl: String = "http://sc2b-sjc.1.fm:8030/"
     var isPlaing: Boolean = false
+    var isFirstStarted = true
 
 
     override fun onBind(intent: Intent): IBinder? {
@@ -54,8 +55,13 @@ class BackgroundSoundService : Service() {
             }
         }
         else{
-            if(mIntention == "toStart"){
+            if(mIntention == "toStart" && isFirstStarted == false){
+                restart()
+            }
+
+            if(mIntention == "toStart" && isFirstStarted == true){
                 start()
+                isFirstStarted = false
             }
             if(mIntention == "toStop"){
                 //игнорируем
@@ -100,7 +106,6 @@ class BackgroundSoundService : Service() {
         notificationIntentMainAct.putExtra("notification", true)
         val piMainAct = PendingIntent.getActivity(context, 4, notificationIntentMainAct, PendingIntent.FLAG_UPDATE_CURRENT)
 
-
         val builder = NotificationCompat.Builder(context, getChannelId("my_channel_id", "My default Channel", "my_group_id", "My default Group"))
                 .setContentIntent(piMainAct)
                 .setSmallIcon(R.drawable.player)
@@ -118,102 +123,115 @@ class BackgroundSoundService : Service() {
         return notification
     }
 
+
+    fun restart(){
+        player.start()
+        isPlaing = true
+    }
+
     fun start(){
-        Toast.makeText(this, " Connecting... ", Toast.LENGTH_SHORT).show()
-        val r = object : Runnable {
-            override fun run() {
-                preparePlayer()
-                player.start();
-                isPlaing = true
-            }
-        }
+        Toast.makeText(this, " Connecting... ", Toast.LENGTH_LONG).show()
+/*     val listener = object : PlayerStateListener {
+         override fun onPlayerPrepared() {
+             TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+         }
+     }*/
+     val r = object : Runnable {
+         override fun run() {
+             preparePlayer()
+             player.start()
+             isPlaing = true
+         }
+     }
 
-        val t = Thread(r)
-        t.start()
-    }
+     val t = Thread(r)
+     t.start()
+ }
 
-    fun stop(){
-        player.release()
-        Toast.makeText(this, " Disconnecting... ", Toast.LENGTH_SHORT).show()
-        isPlaing = false
-    }
-
-
-    // Подготовка плеера к проигрыванию.
-    fun preparePlayer(){
-        player = MediaPlayer()
-        player.setDataSource(mUrl)
-        player.isLooping = true
-        player.setVolume(100f, 100f)
-
-        if (Build.VERSION.SDK_INT >= 21) {
-            val audioAttributes = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA).
-                            setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
-            player.setAudioAttributes(audioAttributes)
-            player.prepare();
-
-        }else{
-            player.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            // This method was deprecated in API level 26, я использую альтернативу (выше), которая доступна с API 21.
-            player.prepare();
-        }
-    }
+ fun stop(){
+     player.pause()
+     // player.release()
+    // Toast.makeText(this, " Disconnecting... ", Toast.LENGTH_SHORT).show()
+     isPlaing = false
+ }
 
 
-    private fun getChannelId(channelId: String, name: String, groupId: String, groupName: String) : String {
-        return when (Build.VERSION.SDK_INT) {
-            Build.VERSION_CODES.O -> getChannelIdInternal(channelId, name, groupId, groupName)
-            else ->  ""
-        }
-    }
+ // Подготовка плеера к проигрыванию.
+ fun preparePlayer(){
+     player = MediaPlayer()
+     player.setDataSource(mUrl)
+     player.isLooping = true
+     player.setVolume(100f, 100f)
+
+     if (Build.VERSION.SDK_INT >= 21) {
+         val audioAttributes = AudioAttributes.Builder()
+                 .setUsage(AudioAttributes.USAGE_MEDIA).
+                         setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
+         player.setAudioAttributes(audioAttributes)
+         player.prepare();
+     }else{
+         player.setAudioStreamType(AudioManager.STREAM_MUSIC);
+         // This method was deprecated in API level 26, я использую альтернативу (выше), которая доступна с API 21.
+         player.prepare();
+     }
+ }
 
 
-    @TargetApi(Build.VERSION_CODES.O)
-    private fun getChannelIdInternal(channelId: String, name: String, groupId: String, groupName: String): String {
-
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channels = nm.notificationChannels
-        for (channel in channels) {
-            if (channel.id == channelId) {
-                return channel.id
-            }
-        }
-
-        val group = getNotificationChannelGroupId(groupId, groupName)
-        val importance = NotificationManager.IMPORTANCE_HIGH
-        val notificationChannel = NotificationChannel(channelId, name, importance)
-        notificationChannel.enableLights(true)
-        notificationChannel.lightColor = Color.RED
-        notificationChannel.enableVibration(true)
-
-        notificationChannel.group = group // set custom group
-        nm.createNotificationChannel(notificationChannel)
-
-        return channelId
-    }
+ private fun getChannelId(channelId: String, name: String, groupId: String, groupName: String) : String {
+     return when (Build.VERSION.SDK_INT) {
+         Build.VERSION_CODES.O -> getChannelIdInternal(channelId, name, groupId, groupName)
+         else ->  ""
+     }
+ }
 
 
-    private fun getNotificationChannelGroupId(groupId: String, name: String): String {
-        return when (Build.VERSION.SDK_INT) {
-            Build.VERSION_CODES.O -> getNotificationChannelGroupIdInternal(groupId, name)
-            else ->  ""
-        }
-    }
+ @TargetApi(Build.VERSION_CODES.O)
+ private fun getChannelIdInternal(channelId: String, name: String, groupId: String, groupName: String): String {
 
-    @TargetApi(Build.VERSION_CODES.O)
-    private fun getNotificationChannelGroupIdInternal(groupId: String, name: String): String {
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val groups = nm.notificationChannelGroups
-        for (group in groups) {
-            if (group.id == groupId) {
-                return group.id
-            }
-        }
-        nm.createNotificationChannelGroup(NotificationChannelGroup(groupId, name))
-        return groupId
-    }
+     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+     val channels = nm.notificationChannels
+     for (channel in channels) {
+         if (channel.id == channelId) {
+             return channel.id
+         }
+     }
 
+     val group = getNotificationChannelGroupId(groupId, groupName)
+     val importance = NotificationManager.IMPORTANCE_HIGH
+     val notificationChannel = NotificationChannel(channelId, name, importance)
+     notificationChannel.enableLights(true)
+     notificationChannel.lightColor = Color.RED
+     notificationChannel.enableVibration(true)
+     notificationChannel.group = group // set custom group
+     nm.createNotificationChannel(notificationChannel)
+
+     return channelId
+ }
+
+
+ private fun getNotificationChannelGroupId(groupId: String, name: String): String {
+     return when (Build.VERSION.SDK_INT) {
+         Build.VERSION_CODES.O -> getNotificationChannelGroupIdInternal(groupId, name)
+         else ->  ""
+     }
+ }
+
+ @TargetApi(Build.VERSION_CODES.O)
+ private fun getNotificationChannelGroupIdInternal(groupId: String, name: String): String {
+     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+     val groups = nm.notificationChannelGroups
+     for (group in groups) {
+         if (group.id == groupId) {
+             return group.id
+         }
+     }
+     nm.createNotificationChannelGroup(NotificationChannelGroup(groupId, name))
+     return groupId
+ }
+
+ interface PlayerStateListener {
+     fun onPlayerPrepared();
+ }
 
 }
 
