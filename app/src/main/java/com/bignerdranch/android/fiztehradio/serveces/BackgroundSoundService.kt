@@ -9,12 +9,15 @@ import android.graphics.Color
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.media.session.MediaSession
 import android.os.Build
 import android.os.IBinder
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.bignerdranch.android.fiztehradio.MainActivity
 import com.bignerdranch.android.fiztehradio.R
+import androidx.media.app.NotificationCompat as MediaNotificationCompat
+
 
 
 class BackgroundSoundService : Service() {
@@ -30,6 +33,7 @@ class BackgroundSoundService : Service() {
     }
 
     override fun onCreate() {
+
         super.onCreate()
         val notification = createActionNotification(this)//Чтобы сервис жил в background нам нужна notification
         startForeground(1000, notification) // запускаемся в фоновом режиме.
@@ -106,17 +110,27 @@ class BackgroundSoundService : Service() {
         notificationIntentMainAct.putExtra("notification", true)
         val piMainAct = PendingIntent.getActivity(context, 4, notificationIntentMainAct, PendingIntent.FLAG_UPDATE_CURRENT)
 
-        val builder = NotificationCompat.Builder(context, getChannelId("my_channel_id", "My default Channel", "my_group_id", "My default Group"))
+        if (Build.VERSION.SDK_INT >= 21) {var MediaSession = MediaSession(this,"Tag")}
+
+        var builder = NotificationCompat.Builder(context,  getChannelId("my_channel_id", "My default Channel", "my_group_id", "My default Group"))
+                // Show controls on lock screen even when user hides sensitive content.
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+                // Add media control buttons that invoke intents in your media service
                 .setContentIntent(piMainAct)
                 .setSmallIcon(R.drawable.player)
                 .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.player))
-                .addAction(NotificationCompat.Action.Builder(R.drawable.navigation_empty_icon, "play", piStart).build())
-                .addAction(NotificationCompat.Action.Builder(R.drawable.navigation_empty_icon, "pause", piStop).build())// #0)
-                .addAction(NotificationCompat.Action.Builder(R.drawable.navigation_empty_icon, "stop", piStopService).build())// #0)
+                .addAction(NotificationCompat.Action.Builder(R.drawable.navigation_empty_icon, "Previous", piStart).build())
+                .addAction(NotificationCompat.Action.Builder(R.drawable.navigation_empty_icon, "Pause", piStop).build())// #0)
+                .addAction(NotificationCompat.Action.Builder(R.drawable.navigation_empty_icon, "Next", piStopService).build())// #0)
                 .setAutoCancel(false)
                 .setContentTitle("Player")
                 .setContentText("chosen url")
                 .setColor(245)
+                // Apply the media style template
+              //  .setStyle(Med)
+                .setContentTitle("Wonderful music")
+                .setContentText("My Awesome Band")
 
 
         val notification = builder.build()
