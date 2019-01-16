@@ -1,251 +1,267 @@
 package com.bignerdranch.android.fiztehradio.serveces
 
-import android.annotation.TargetApi
 import android.app.*
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.graphics.BitmapFactory
-import android.graphics.Color
+import android.content.IntentFilter
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.media.AudioManager.OnAudioFocusChangeListener
 import android.media.MediaPlayer
-import android.media.session.MediaSession
+import android.net.Uri
+import android.os.Binder
 import android.os.Build
 import android.os.IBinder
-import android.widget.Toast
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
+import androidx.annotation.Nullable
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.media.session.MediaButtonReceiver
 import com.bignerdranch.android.fiztehradio.MainActivity
 import com.bignerdranch.android.fiztehradio.R
-import androidx.media.app.NotificationCompat as MediaNotificationCompat
-
-
 
 class BackgroundSoundService : Service() {
-    lateinit var player: MediaPlayer
-    var mIntention: String = "toStart" // Начальное намерение для MediaPlayer при запуске Service.
-    val mUrl: String = "http://sc2b-sjc.1.fm:8030/"
-    var isPlaing: Boolean = false
-    var isFirstStarted = true
 
+    private val NOTIFICATION_ID = 404
+    private val NOTIFICATION_DEFAULT_CHANNEL_ID = "default_channel"
 
-    override fun onBind(intent: Intent): IBinder? {
-        return null
+    //private val metadataBuilder = MediaMetadataCompat.Builder()
+
+    private val stateBuilder = PlaybackStateCompat.Builder().setActions(
+            PlaybackStateCompat.ACTION_PLAY
+                    or PlaybackStateCompat.ACTION_STOP
+                    or PlaybackStateCompat.ACTION_PAUSE
+                    or PlaybackStateCompat.ACTION_PLAY_PAUSE
+                    or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                    or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+    )
+
+    private var mediaSession: MediaSessionCompat? = null
+
+    private var audioManager: AudioManager? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var audioFocusRequested = false
+
+    private var player: MediaPlayer? = null
+
+    @Nullable
+    override fun onBind(intent: Intent): IBinder {
+        return BackgroundSoundServiceBinder()
+    }
+
+    inner class BackgroundSoundServiceBinder : Binder() {
+        val mediaSessionToken: MediaSessionCompat.Token
+            get() = mediaSession!!.sessionToken
     }
 
     override fun onCreate() {
-
         super.onCreate()
-        val notification = createActionNotification(this)//Чтобы сервис жил в background нам нужна notification
-        startForeground(1000, notification) // запускаемся в фоновом режиме.
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationChannel = NotificationChannel(NOTIFICATION_DEFAULT_CHANNEL_ID, getString(R.string.notification_channel_name), NotificationManager.IMPORTANCE_DEFAULT)
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
+            notificationManager!!.createNotificationChannel(notificationChannel)
+
+            val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+            audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setOnAudioFocusChangeListener(audioFocusChangeListener)
+                    .setAcceptsDelayedFocusGain(false)
+                    .setWillPauseWhenDucked(true)
+                    .setAudioAttributes(audioAttributes)
+                    .build()
+        }
+
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager?
+
+        mediaSession = MediaSessionCompat(this, "PlayerService")
+        mediaSession!!.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
+        mediaSession!!.setCallback(mediaSessionCallback)
+
+        val appContext = getApplicationContext()
+
+        val activityIntent = Intent(appContext, MainActivity::class.java)
+        mediaSession!!.setSessionActivity(PendingIntent.getActivity(appContext, 0, activityIntent, 0))
+
+        val mediaButtonIntent = Intent(Intent.ACTION_MEDIA_BUTTON, null, appContext, MediaButtonReceiver::class.java)
+        mediaSession!!.setMediaButtonReceiver(PendingIntent.getBroadcast(appContext, 0, mediaButtonIntent, 0))
+
+        initMediaPlayer()
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        if(intent.extras != null){
-            mIntention = intent.getStringExtra("intention") // Этот интент приходит из notification при нажатии.
-        }
-
-
-        if(isPlaing){
-
-            if(mIntention == "toStart"){
-                // игнорируем
-            }
-            if(mIntention == "toStop"){
-                stop()
-            }
-            if (mIntention == "toBreak"){
-                stopSelf()
-            }
-        }
-        else{
-            if(mIntention == "toStart" && isFirstStarted == false){
-                restart()
-            }
-
-            if(mIntention == "toStart" && isFirstStarted == true){
-                start()
-                isFirstStarted = false
-            }
-            if(mIntention == "toStop"){
-                //игнорируем
-            }
-            if (mIntention == "toBreak"){
-                stopSelf()
-            }
-        }
-
-
-        return Service.START_STICKY
+        MediaButtonReceiver.handleIntent(mediaSession, intent)
+        return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onDestroy() {
-        player.release()
+        super.onDestroy()
+        mediaSession!!.release()
     }
 
+    private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
 
+        private var currentUri: Uri? = null
+        internal var currentState = PlaybackStateCompat.STATE_STOPPED
 
-    @TargetApi(Build.VERSION_CODES.KITKAT_WATCH)
-    internal fun createActionNotification(context: Context):Notification {
+        override fun onPlay() {
+            if (!player!!.isPlaying()) {
+                startService(Intent(getApplicationContext(), BackgroundSoundService::class.java))
 
+                if (!audioFocusRequested) {
+                    audioFocusRequested = true
 
-        //Создание интента для запуска плеера!
-        val startPlayerIntent = Intent(context, BackgroundSoundService::class.java)
-        startPlayerIntent.putExtra("intention", "toStart")
-        val piStart = PendingIntent.getService(context, 1, startPlayerIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+                    val audioFocusResult: Int
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        audioFocusResult = audioManager!!.requestAudioFocus(audioFocusRequest!!)
+                    } else {
+                        audioFocusResult = audioManager!!.requestAudioFocus(audioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
+                    }
+                    if (audioFocusResult != AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+                        return
+                }
 
-        //Создание интента для остановки плеера!
-        val stopPlayerIntent = Intent(context, BackgroundSoundService::class.java)
-        stopPlayerIntent.putExtra("intention", "toStop")
-        val piStop = PendingIntent.getService(context, 2, stopPlayerIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+                mediaSession!!.isActive = true // Сразу после получения фокуса
 
+                registerReceiver(this@BackgroundSoundService.becomingNoisyReceiver, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
+                player!!.start()
+            }
 
-        //Создание интента для остановки сервиса!
-        val stopServiceIntent = Intent(context, BackgroundSoundService::class.java)
-        stopServiceIntent.putExtra("intention", "toBreak")
-        val piStopService = PendingIntent.getService(context, 3, stopServiceIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+            mediaSession!!.setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_PLAYING, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1f).build())
+            currentState = PlaybackStateCompat.STATE_PLAYING
 
-        //Создание интента для перехода в MainActivity по нажатию на notification.
-        val notificationIntentMainAct = Intent(context, MainActivity::class.java)
-        notificationIntentMainAct.putExtra("notification", true)
-        val piMainAct = PendingIntent.getActivity(context, 4, notificationIntentMainAct, PendingIntent.FLAG_UPDATE_CURRENT)
+            refreshNotificationAndForegroundStatus(currentState)
+        }
 
-        if (Build.VERSION.SDK_INT >= 21) {var MediaSession = MediaSession(this,"Tag")}
+        override fun onPause() {
+            if (player!!.isPlaying()) {
+                player!!.pause()
+                unregisterReceiver(becomingNoisyReceiver)
+            }
 
-        var builder = NotificationCompat.Builder(context,  getChannelId("my_channel_id", "My default Channel", "my_group_id", "My default Group"))
-                // Show controls on lock screen even when user hides sensitive content.
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            mediaSession!!.setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_PAUSED, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1f).build())
+            currentState = PlaybackStateCompat.STATE_PAUSED
 
-                // Add media control buttons that invoke intents in your media service
-                .setContentIntent(piMainAct)
-                .setSmallIcon(R.drawable.player)
-                .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.player))
-                .addAction(NotificationCompat.Action.Builder(R.drawable.navigation_empty_icon, "Previous", piStart).build())
-                .addAction(NotificationCompat.Action.Builder(R.drawable.navigation_empty_icon, "Pause", piStop).build())// #0)
-                .addAction(NotificationCompat.Action.Builder(R.drawable.navigation_empty_icon, "Next", piStopService).build())// #0)
-                .setAutoCancel(false)
-                .setContentTitle("Player")
-                .setContentText("chosen url")
-                .setColor(245)
-                // Apply the media style template
-              //  .setStyle(Med)
-                .setContentTitle("Wonderful music")
-                .setContentText("My Awesome Band")
+            refreshNotificationAndForegroundStatus(currentState)
+        }
 
+        override fun onStop() {
+            if (player!!.isPlaying()) {
+                player!!.pause()
+                unregisterReceiver(becomingNoisyReceiver)
+            }
 
-        val notification = builder.build()
-        return notification
+            if (audioFocusRequested) {
+                audioFocusRequested = false
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    audioManager!!.abandonAudioFocusRequest(audioFocusRequest!!)
+                } else {
+                    audioManager!!.abandonAudioFocus(audioFocusChangeListener)
+                }
+            }
+
+            mediaSession!!.isActive = false
+
+            mediaSession!!.setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_STOPPED, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1f).build())
+            currentState = PlaybackStateCompat.STATE_STOPPED
+
+            refreshNotificationAndForegroundStatus(currentState)
+
+            stopSelf()
+        }
+
+        override fun onSkipToNext() {
+        }
+
+        override fun onSkipToPrevious() {
+        }
+
+        private fun prepareToPlay(uri: Uri) {
+        }
     }
 
-
-    fun restart(){
-        player.start()
-        isPlaing = true
+    private val audioFocusChangeListener = OnAudioFocusChangeListener {
+        focusChange ->
+        when (focusChange) {
+//            AudioManager.AUDIOFOCUS_GAIN -> this.mediaSessionCallback.onPlay() // Не очень красиво
+//            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> mediaSessionCallback.onPause()
+//            else -> mediaSessionCallback.onPause()
+        }
     }
 
-    fun start(){
-        Toast.makeText(this, " Connecting... ", Toast.LENGTH_LONG).show()
-/*     val listener = object : PlayerStateListener {
-         override fun onPlayerPrepared() {
-             TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-         }
-     }*/
-     val r = object : Runnable {
-         override fun run() {
-             preparePlayer()
-             player.start()
-             isPlaing = true
-         }
-     }
+    private val becomingNoisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            // Disconnecting headphones - stop playback
+//            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY == intent.action)
+//                mediaSessionCallback.onPause()
 
-     val t = Thread(r)
-     t.start()
- }
+        }
+    }
 
- fun stop(){
-     player.pause()
-     // player.release()
-    // Toast.makeText(this, " Disconnecting... ", Toast.LENGTH_SHORT).show()
-     isPlaing = false
- }
+    private fun refreshNotificationAndForegroundStatus(playbackState: Int) {
+        when (playbackState) {
+            PlaybackStateCompat.STATE_PLAYING -> {
+                startForeground(NOTIFICATION_ID, getNotification(playbackState))
+            }
+            PlaybackStateCompat.STATE_PAUSED -> {
+                NotificationManagerCompat.from(this@BackgroundSoundService).notify(NOTIFICATION_ID, getNotification(playbackState))
+                stopForeground(false)
+            }
+            else -> {
+                stopForeground(true)
+            }
+        }
+    }
 
+    private fun getNotification(playbackState: Int): Notification {
+        val builder = MediaStyleHelper.from(this, this!!.mediaSession!!)
+        //builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_previous, getString(R.string.previous), MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)))
 
- // Подготовка плеера к проигрыванию.
- fun preparePlayer(){
-     player = MediaPlayer()
-     player.setDataSource(mUrl)
-     player.isLooping = true
-     player.setVolume(100f, 100f)
+        if (playbackState == PlaybackStateCompat.STATE_PLAYING)
+            builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_pause, getString(R.string.pause), MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PLAY_PAUSE)))
+        else
+            builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_play, getString(R.string.play), MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PLAY_PAUSE)))
 
-     if (Build.VERSION.SDK_INT >= 21) {
-         val audioAttributes = AudioAttributes.Builder()
-                 .setUsage(AudioAttributes.USAGE_MEDIA).
-                         setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
-         player.setAudioAttributes(audioAttributes)
-         player.prepare();
-     }else{
-         player.setAudioStreamType(AudioManager.STREAM_MUSIC);
-         // This method was deprecated in API level 26, я использую альтернативу (выше), которая доступна с API 21.
-         player.prepare();
-     }
- }
+        //builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_next, getString(R.string.next), MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_NEXT)))
+        builder.setStyle(androidx.media.app.NotificationCompat.MediaStyle()
+                .setShowActionsInCompactView(0)
+                .setShowCancelButton(true)
+                .setCancelButtonIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_STOP))
+                .setMediaSession(mediaSession!!.sessionToken)) // setMediaSession требуется для Android Wear
+        builder.setSmallIcon(R.drawable.player)
+        //builder.setColor(ContextCompat.getColor(this, R.color.colorPrimaryDark)) // The whole background (in MediaStyle), not just icon background
+        builder.setColor(0) // The whole background (in MediaStyle), not just icon background
+        builder.setShowWhen(false)
+        builder.setPriority(NotificationCompat.PRIORITY_HIGH)
+        builder.setOnlyAlertOnce(true)
+        builder.setChannelId(NOTIFICATION_DEFAULT_CHANNEL_ID)
 
+        return builder.build()
+    }
 
- private fun getChannelId(channelId: String, name: String, groupId: String, groupName: String) : String {
-     return when (Build.VERSION.SDK_INT) {
-         Build.VERSION_CODES.O -> getChannelIdInternal(channelId, name, groupId, groupName)
-         else ->  ""
-     }
- }
+    fun initMediaPlayer(){
+        val mUrl: String = "http://sc2b-sjc.1.fm:8030/"
+        player = MediaPlayer()
+        player!!.setDataSource(mUrl)
+        player!!.isLooping = true
+        player!!.setVolume(100f, 100f)
 
-
- @TargetApi(Build.VERSION_CODES.O)
- private fun getChannelIdInternal(channelId: String, name: String, groupId: String, groupName: String): String {
-
-     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-     val channels = nm.notificationChannels
-     for (channel in channels) {
-         if (channel.id == channelId) {
-             return channel.id
-         }
-     }
-
-     val group = getNotificationChannelGroupId(groupId, groupName)
-     val importance = NotificationManager.IMPORTANCE_HIGH
-     val notificationChannel = NotificationChannel(channelId, name, importance)
-     notificationChannel.enableLights(true)
-     notificationChannel.lightColor = Color.RED
-     notificationChannel.enableVibration(true)
-     notificationChannel.group = group // set custom group
-     nm.createNotificationChannel(notificationChannel)
-
-     return channelId
- }
-
-
- private fun getNotificationChannelGroupId(groupId: String, name: String): String {
-     return when (Build.VERSION.SDK_INT) {
-         Build.VERSION_CODES.O -> getNotificationChannelGroupIdInternal(groupId, name)
-         else ->  ""
-     }
- }
-
- @TargetApi(Build.VERSION_CODES.O)
- private fun getNotificationChannelGroupIdInternal(groupId: String, name: String): String {
-     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-     val groups = nm.notificationChannelGroups
-     for (group in groups) {
-         if (group.id == groupId) {
-             return group.id
-         }
-     }
-     nm.createNotificationChannelGroup(NotificationChannelGroup(groupId, name))
-     return groupId
- }
-
- interface PlayerStateListener {
-     fun onPlayerPrepared();
- }
-
+        if (Build.VERSION.SDK_INT >= 21) {
+            val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA).
+                            setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
+            player!!.setAudioAttributes(audioAttributes)
+        }else{
+            player!!.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            // This method was deprecated in API level 26, я использую альтернативу (выше), которая доступна с API 21.
+        }
+        player!!.prepare();
+    }
 }
 

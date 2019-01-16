@@ -13,5 +13,12 @@
     <string name="toStart">toStart</string>
     <string name="toStop">toStop</string>
     <string name="toBreak">toBreak</string>
+    <string name="notification_channel_name">Player controls</string>
+
+    <string name="pause">Pause</string>
+
+    <string name="previous">Previous</string>
+    <string name="next">Next</string>
+
 
 </resources>

@@ -24,7 +24,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-
         router = Router(this, R.id.fragment_container)
         if (savedInstanceState == null) router.navigateTo(true, ::MainFragment)// переключаемся на MainFragment
 
